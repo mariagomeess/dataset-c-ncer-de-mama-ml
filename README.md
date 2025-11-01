@@ -57,11 +57,11 @@ Foram testados **9 algoritmos de Machine Learning**:
 
 ### 🔹 6. Avaliação Final
 - Métricas principais:
-  - **Accuracy:** 98.25%
+  - **Accuracy:** 97.37%
   - **Precision:** 100%
-  - **Recall:** 95.24%
-  - **F1-Score:** 97.56%
-  - **ROC-AUC:** 99.70%
+  - **Recall:** 92.86%
+  - **F1-Score:** 96.30%
+  - **ROC-AUC:** 99.47%
 - Curvas ROC e Precision-Recall
 - Análise de erros e métricas clínicas (Sensibilidade, Especificidade, PPV, NPV)
 
@@ -107,7 +107,7 @@ streamlit run app.py
 🌐 Deploy Online
 
 Aplicação hospedada no Streamlit Cloud:
-👉 https://ml-breast-cancer-yourname.streamlit.app
+👉 https://ml-saude-mariavitoria.streamlit.app/
 
 📜 Licença
 
