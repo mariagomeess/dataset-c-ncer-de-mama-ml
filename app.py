@@ -46,7 +46,6 @@ else:
 # ==============================================
 st.sidebar.header("🔧 Insira os valores das variáveis clínicas:")
 
-# Campos principais do dataset (usei as mais relevantes)
 inputs = {
     "mean radius": st.sidebar.number_input("Raio médio", min_value=0.0, max_value=30.0, value=14.0),
     "mean texture": st.sidebar.number_input("Textura média", min_value=0.0, max_value=40.0, value=20.0),
@@ -60,13 +59,19 @@ inputs = {
     "mean fractal dimension": st.sidebar.number_input("Dimensão fractal média", min_value=0.0, max_value=1.0, value=0.06),
 }
 
-# Converter para DataFrame
 input_df = pd.DataFrame([inputs])
 
 # ==============================================
-# ⚙️ Pré-processamento
+# ⚙️ Pré-processamento (corrigido)
 # ==============================================
-scaled_input = scaler.transform(input_df)
+try:
+    # Garante que as colunas estão na mesma ordem e formato do treinamento
+    input_df = pd.DataFrame([inputs], columns=scaler.feature_names_in_)
+    scaled_input = scaler.transform(input_df)
+except Exception as e:
+    st.error("❌ Erro ao processar os dados de entrada. Verifique o log abaixo:")
+    st.code(str(e))
+    st.stop()
 
 # ==============================================
 # 🔮 Predição
@@ -75,10 +80,15 @@ if st.button("🔍 Realizar Previsão"):
     prediction = model.predict(scaled_input)[0]
     proba = model.predict_proba(scaled_input)[0][1] * 100
 
+    st.markdown("---")
+
     if prediction == 1:
-        st.success(f"✅ Resultado: **Benigno** ({proba:.2f}% de confiança)")
+        st.success(f"🟢 Resultado: **Benigno** ({proba:.2f}% de confiança)")
+        st.progress(int(proba))
+        st.balloons()
     else:
-        st.error(f"⚠️ Resultado: **Maligno** ({proba:.2f}% de confiança)")
+        st.error(f"🔴 Resultado: **Maligno** ({proba:.2f}% de confiança)")
+        st.progress(int(proba))
 
     st.markdown("---")
     st.caption("Modelo baseado em dados reais do Breast Cancer Dataset (Scikit-learn).")
@@ -98,5 +108,4 @@ with st.expander("ℹ️ Sobre o Modelo"):
     )
 
 st.markdown("---")
-st.caption("Desenvolvido por Maria Vitória Gomes • Faculdade Senac Pernambuco 💙")
-
+st.caption("Desenvolvido por **Maria Vitória Gomes** • Faculdade Senac Pernambuco 💙")
