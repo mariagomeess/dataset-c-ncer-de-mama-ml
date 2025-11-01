@@ -3,9 +3,12 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+import matplotlib.pyplot as plt
+from io import BytesIO
+from fpdf import FPDF
 
 # ==============================================
-# 🧠 APP: Predição de Câncer de Mama
+# 🧠 APP: Predição de Câncer de Mama (Versão 2)
 # ==============================================
 
 st.set_page_config(
@@ -31,6 +34,7 @@ st.markdown(
 # ==============================================
 MODEL_PATH = "artifacts/best_model.pkl"
 SCALER_PATH = "artifacts/scaler.pkl"
+FEATURE_IMG_PATH = "feature_importance.png"
 
 if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
     with open(MODEL_PATH, "rb") as f:
@@ -47,83 +51,122 @@ else:
 st.sidebar.header("🔧 Insira os valores das variáveis clínicas:")
 
 inputs = {
-    "mean radius": st.sidebar.number_input("Raio médio", min_value=0.0, max_value=30.0, value=14.0),
-    "mean texture": st.sidebar.number_input("Textura média", min_value=0.0, max_value=40.0, value=20.0),
-    "mean perimeter": st.sidebar.number_input("Perímetro médio", min_value=0.0, max_value=200.0, value=90.0),
-    "mean area": st.sidebar.number_input("Área média", min_value=0.0, max_value=2500.0, value=700.0),
-    "mean smoothness": st.sidebar.number_input("Suavidade média", min_value=0.0, max_value=1.0, value=0.1),
-    "mean compactness": st.sidebar.number_input("Compacidade média", min_value=0.0, max_value=1.0, value=0.2),
-    "mean concavity": st.sidebar.number_input("Concavidade média", min_value=0.0, max_value=1.0, value=0.3),
-    "mean concave points": st.sidebar.number_input("Pontos côncavos médios", min_value=0.0, max_value=1.0, value=0.15),
-    "mean symmetry": st.sidebar.number_input("Simetria média", min_value=0.0, max_value=1.0, value=0.2),
-    "mean fractal dimension": st.sidebar.number_input("Dimensão fractal média", min_value=0.0, max_value=1.0, value=0.06),
+    "mean radius": st.sidebar.number_input("Raio médio", 0.0, 30.0, 14.0),
+    "mean texture": st.sidebar.number_input("Textura média", 0.0, 40.0, 20.0),
+    "mean perimeter": st.sidebar.number_input("Perímetro médio", 0.0, 200.0, 90.0),
+    "mean area": st.sidebar.number_input("Área média", 0.0, 2500.0, 700.0),
+    "mean smoothness": st.sidebar.number_input("Suavidade média", 0.0, 1.0, 0.1),
+    "mean compactness": st.sidebar.number_input("Compacidade média", 0.0, 1.0, 0.2),
+    "mean concavity": st.sidebar.number_input("Concavidade média", 0.0, 1.0, 0.3),
+    "mean concave points": st.sidebar.number_input("Pontos côncavos médios", 0.0, 1.0, 0.15),
+    "mean symmetry": st.sidebar.number_input("Simetria média", 0.0, 1.0, 0.2),
+    "mean fractal dimension": st.sidebar.number_input("Dimensão fractal média", 0.0, 1.0, 0.06),
 }
 
 # ==============================================
 # ⚙️ Pré-processamento ajustado
 # ==============================================
 try:
-    # Cria DataFrame com as 30 colunas esperadas pelo scaler
     all_features = list(scaler.feature_names_in_)
     full_input = pd.DataFrame(columns=all_features)
-
-    # Preenche com 0 inicialmente
     full_input.loc[0] = np.zeros(len(all_features))
 
-    # Substitui as colunas fornecidas pelo usuário
     for col, val in inputs.items():
         if col in full_input.columns:
             full_input.at[0, col] = val
 
-    # Escalar corretamente
     scaled_input = scaler.transform(full_input)
-
 except Exception as e:
     st.error("❌ Erro ao preparar os dados para previsão.")
     st.code(str(e))
     st.stop()
 
 # ==============================================
-# 🔮 Predição (com checagem de segurança)
+# 🔮 Predição + Visualização
 # ==============================================
 if st.button("🔍 Realizar Previsão"):
 
     if np.isnan(scaled_input).any():
-        st.error("❌ Existem valores inválidos. Tente novamente com números válidos.")
+        st.error("❌ Existem valores inválidos. Verifique as entradas.")
         st.stop()
 
     try:
         prediction = model.predict(scaled_input)[0]
-        proba = model.predict_proba(scaled_input)[0][1] * 100
+        proba = model.predict_proba(scaled_input)[0]
+
+        benigno_prob = proba[1] * 100
+        maligno_prob = proba[0] * 100
 
         st.markdown("---")
 
         if prediction == 1:
-            st.success(f"🟢 Resultado: **Benigno** ({proba:.2f}% de confiança)")
-            st.progress(int(proba))
-            st.balloons()
+            st.success(f"🟢 **Benigno** ({benigno_prob:.2f}% de confiança)")
+            st.progress(int(benigno_prob))
         else:
-            st.error(f"🔴 Resultado: **Maligno** ({proba:.2f}% de confiança)")
-            st.progress(int(proba))
+            st.error(f"🔴 **Maligno** ({maligno_prob:.2f}% de confiança)")
+            st.progress(int(maligno_prob))
+
+        # 📊 Exibir gráfico de barras com probabilidades
+        st.markdown("### 📊 Distribuição das probabilidades:")
+        fig, ax = plt.subplots(figsize=(4, 3))
+        ax.bar(["Benigno", "Maligno"], [benigno_prob, maligno_prob], color=["green", "red"], alpha=0.7)
+        ax.set_ylim(0, 100)
+        ax.set_ylabel("Confiança (%)")
+        ax.set_title("Predição do Modelo")
+        st.pyplot(fig)
+
+        # 📈 Mostrar gráfico de importância de features (se existir)
+        if os.path.exists(FEATURE_IMG_PATH):
+            st.markdown("### 🔍 Importância das Principais Features")
+            st.image(FEATURE_IMG_PATH, caption="Importância das variáveis no modelo", use_container_width=True)
 
         st.markdown("---")
-        st.caption("Modelo baseado em dados reais do Breast Cancer Dataset (Scikit-learn).")
+
+        # ==============================================
+        # 📄 Gerar Relatório PDF
+        # ==============================================
+        st.subheader("📄 Gerar Relatório da Previsão")
+
+        if st.button("🧾 Baixar Relatório PDF"):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(0, 10, "Relatório de Predição - Câncer de Mama", ln=True, align="C")
+            pdf.ln(10)
+            pdf.set_font("Arial", "", 12)
+            pdf.cell(0, 10, f"Resultado: {'Benigno' if prediction == 1 else 'Maligno'}", ln=True)
+            pdf.cell(0, 10, f"Confiança: {max(benigno_prob, maligno_prob):.2f}%", ln=True)
+            pdf.cell(0, 10, f"Modelo: Ensemble (Voting Classifier)", ln=True)
+            pdf.ln(10)
+            pdf.multi_cell(0, 8, "Variáveis informadas:\n" + "\n".join([f"{k}: {v}" for k, v in inputs.items()]))
+
+            # Salvar o PDF em memória
+            buffer = BytesIO()
+            pdf.output(buffer)
+            buffer.seek(0)
+
+            st.download_button(
+                label="📥 Baixar PDF",
+                data=buffer,
+                file_name="relatorio_predicao.pdf",
+                mime="application/pdf",
+            )
 
     except Exception as e:
-        st.error("⚠️ Ocorreu um erro durante a previsão:")
+        st.error("⚠️ Erro ao executar a previsão.")
         st.code(str(e))
 
 # ==============================================
-# 📊 Informações adicionais
+# ℹ️ Informações do modelo
 # ==============================================
 with st.expander("ℹ️ Sobre o Modelo"):
     st.write(
         """
-        - **Tipo de modelo:** Ensemble (Voting Classifier)  
-        - **Algoritmos utilizados:** Regressão Logística, LightGBM e Random Forest  
-        - **Acurácia:** 98.25%  
-        - **F1-Score:** 97.56%  
-        - **ROC-AUC:** 99.70%  
+        - **Tipo:** Ensemble (Voting Classifier)  
+        - **Algoritmos:** SVM, Regressão Logística, LightGBM e Random Forest  
+        - **Acurácia:** 97.37%  
+        - **F1-Score:** 96.30%  
+        - **ROC-AUC:** 96.00%  
         """
     )
 
