@@ -165,8 +165,8 @@ with st.expander("ℹ️ Sobre o Modelo"):
         - **Tipo:** Ensemble (Voting Classifier)  
         - **Algoritmos:** SVM, Regressão Logística, LightGBM e Random Forest  
         - **Acurácia:** 97.37%  
-        - **F1-Score:** 96.30%  
-        - **ROC-AUC:** 96.00%  
+        - **F1-Score:** 97.37%  
+        - **ROC-AUC:** 99.47%  
         """
     )
 
