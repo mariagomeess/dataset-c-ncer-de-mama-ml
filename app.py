@@ -59,32 +59,40 @@ inputs = {
     "mean fractal dimension": st.sidebar.number_input("Dimensão fractal média", min_value=0.0, max_value=1.0, value=0.06),
 }
 
-input_df = pd.DataFrame([inputs])
-
 # ==============================================
-# ⚙️ Pré-processamento (corrigido)
+# ⚙️ Pré-processamento ajustado
 # ==============================================
 try:
-    # Garante que as colunas estão na mesma ordem e formato do treinamento
-    input_df = pd.DataFrame([inputs], columns=scaler.feature_names_in_)
-    scaled_input = scaler.transform(input_df)
+    # Cria DataFrame com as 30 colunas esperadas pelo scaler
+    all_features = list(scaler.feature_names_in_)
+    full_input = pd.DataFrame(columns=all_features)
+
+    # Preenche com 0 inicialmente
+    full_input.loc[0] = np.zeros(len(all_features))
+
+    # Substitui as colunas fornecidas pelo usuário
+    for col, val in inputs.items():
+        if col in full_input.columns:
+            full_input.at[0, col] = val
+
+    # Escalar corretamente
+    scaled_input = scaler.transform(full_input)
+
 except Exception as e:
-    st.error("❌ Erro ao processar os dados de entrada. Verifique o log abaixo:")
+    st.error("❌ Erro ao preparar os dados para previsão.")
     st.code(str(e))
     st.stop()
 
 # ==============================================
-# 🔮 Predição (com verificação de dados)
+# 🔮 Predição (com checagem de segurança)
 # ==============================================
 if st.button("🔍 Realizar Previsão"):
 
-    # Verifica se há valores nulos ou não numéricos
-    if input_df.isnull().any().any() or np.isinf(input_df.values).any():
-        st.error("❌ Existem valores inválidos nas entradas. Verifique se todos os campos estão preenchidos corretamente.")
+    if np.isnan(scaled_input).any():
+        st.error("❌ Existem valores inválidos. Tente novamente com números válidos.")
         st.stop()
 
     try:
-        # Predição
         prediction = model.predict(scaled_input)[0]
         proba = model.predict_proba(scaled_input)[0][1] * 100
 
@@ -101,26 +109,9 @@ if st.button("🔍 Realizar Previsão"):
         st.markdown("---")
         st.caption("Modelo baseado em dados reais do Breast Cancer Dataset (Scikit-learn).")
 
-    except ValueError as e:
-        st.error("⚠️ Erro ao executar a previsão. O modelo não conseguiu processar os dados inseridos.")
-        st.code(str(e))
     except Exception as e:
-        st.error("❌ Ocorreu um erro inesperado durante a previsão:")
+        st.error("⚠️ Ocorreu um erro durante a previsão:")
         st.code(str(e))
-
-
-    st.markdown("---")
-
-    if prediction == 1:
-        st.success(f"🟢 Resultado: **Benigno** ({proba:.2f}% de confiança)")
-        st.progress(int(proba))
-        st.balloons()
-    else:
-        st.error(f"🔴 Resultado: **Maligno** ({proba:.2f}% de confiança)")
-        st.progress(int(proba))
-
-    st.markdown("---")
-    st.caption("Modelo baseado em dados reais do Breast Cancer Dataset (Scikit-learn).")
 
 # ==============================================
 # 📊 Informações adicionais
