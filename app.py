@@ -74,11 +74,40 @@ except Exception as e:
     st.stop()
 
 # ==============================================
-# 🔮 Predição
+# 🔮 Predição (com verificação de dados)
 # ==============================================
 if st.button("🔍 Realizar Previsão"):
-    prediction = model.predict(scaled_input)[0]
-    proba = model.predict_proba(scaled_input)[0][1] * 100
+
+    # Verifica se há valores nulos ou não numéricos
+    if input_df.isnull().any().any() or np.isinf(input_df.values).any():
+        st.error("❌ Existem valores inválidos nas entradas. Verifique se todos os campos estão preenchidos corretamente.")
+        st.stop()
+
+    try:
+        # Predição
+        prediction = model.predict(scaled_input)[0]
+        proba = model.predict_proba(scaled_input)[0][1] * 100
+
+        st.markdown("---")
+
+        if prediction == 1:
+            st.success(f"🟢 Resultado: **Benigno** ({proba:.2f}% de confiança)")
+            st.progress(int(proba))
+            st.balloons()
+        else:
+            st.error(f"🔴 Resultado: **Maligno** ({proba:.2f}% de confiança)")
+            st.progress(int(proba))
+
+        st.markdown("---")
+        st.caption("Modelo baseado em dados reais do Breast Cancer Dataset (Scikit-learn).")
+
+    except ValueError as e:
+        st.error("⚠️ Erro ao executar a previsão. O modelo não conseguiu processar os dados inseridos.")
+        st.code(str(e))
+    except Exception as e:
+        st.error("❌ Ocorreu um erro inesperado durante a previsão:")
+        st.code(str(e))
+
 
     st.markdown("---")
 
