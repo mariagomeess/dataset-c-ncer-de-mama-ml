@@ -1,9 +1,11 @@
-streamlit
+```txt
+numpy
 pandas
-scikit-learn
 matplotlib
 seaborn
-numpy
+scikit-learn
 xgboost
 lightgbm
+shap
+streamlit
 
